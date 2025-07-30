@@ -37,7 +37,7 @@ export let qnxLib = {
             }
         };
         const req = http.request(options, (res) => {
-            const csvPath: string = 'AllData\\data_dt.csv'
+            const csvPath: string = 'AllData/data_dt.csv'
             const fileStream = fs.createWriteStream(csvPath);
 
             res.pipe(fileStream);
@@ -46,10 +46,14 @@ export let qnxLib = {
                 mainService.logBoth(`CSV 已儲存到 ${csvPath}`);
                 processFile(csvPath);
             });
+            fileStream.on('error', (err) => {
+                mainService.logBoth(`寫入 CSV 檔時錯誤：${err.message}`);
+            });
         });
         req.on('error', (e) => {
             mainService.logBothErr(`從QNX下載CSV檔時發生錯誤：${e.message}`);
         });
+        
         // 傳送 JSON
         req.write(postData);
         req.end();

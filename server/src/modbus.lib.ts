@@ -41,7 +41,7 @@ class ModbusLib {
                 }
                 catch (error) {
                     this.isOpening = false; // 連線遇拋錯要把已經設為真的此參數還原
-                    onAlarm(error);
+                    onAlarm(`${error}`);
                 }
             }
 

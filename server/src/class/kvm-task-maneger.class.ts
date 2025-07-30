@@ -1,5 +1,4 @@
 import { cmsLib } from "../cs/cms.server";
-import { handleReceivedCsv } from "../cs/main-no-tcpip-check-param.server";
 import { ocrLib } from "../cs/ocr.client";
 import { qnxLib } from "../cs/qnx.server";
 import { mainData } from "../data/main.data";
@@ -9,10 +8,6 @@ import { keys } from "../lib/keys.lib";
 import { ParamCheckResult } from "../lib/param-checker.lib";
 import { mainService } from "../main-service";
 import { setting } from "../setting";
-
-
-
-handleReceivedCsv
 
 class KvmTask {
     positionIndex: number = 99;//理論上進KVM畫面後都是0~3

@@ -1,3 +1,4 @@
+import { Client, FileInfo } from "basic-ftp";
 import * as child_process from 'child_process';
 import * as fs from 'fs';
 import * as net from 'net';
@@ -15,7 +16,7 @@ const tryCheckConnectionTimes = 6;
 const ip = fileSys.readFileSyncWithDefaultStr('../ip.txt', 'localhost');
 const phindowsPath = fileSys.readFileSyncWithDefaultStr('../phindows-path.txt', String.raw`C:\Users\FATCHHC6\Desktop\瑞薩機器軟體\PHINDOWS\PHINDOWS.EXE`);
 const ffftpPath = fileSys.readFileSyncWithDefaultStr('../ffftp-path.txt', String.raw`C:\Users\FATCHHC6\Desktop\瑞薩機器軟體\FFFTP\FFFTP.exe`);
-const dt_csvPath = '../typedata/data_dt.csv';
+const dt_csvPath = '../typedata';
 const checkConnectionT = 5000;
 // connectToMain();
 setInterval(connectToMain, checkConnectionT);
@@ -54,36 +55,55 @@ async function getCSV(body: string, res: http.ServerResponse) {
     try {
         let switchAdapterObj: SwitchAdapterObj = JSON.parse(body);
         let deviceNum = switchAdapterObj.deviceNumber;
-        await ConnectMachineAdapter(switchAdapterObj.allDeviceNumbers,deviceNum)
-        await execFile('./exec/get_data_dt.exe');
-        await new Promise(res => setTimeout(res, 30000));
+        const localPath = path.join(__dirname, dt_csvPath);
+        const csvPath = path.join(localPath,"data_dt.csv")
+        const RemotePath = "/hte/cm700_dt/dataout/data_dt.csv";
 
-        // 根據傳入參數選擇不同檔案（可自行擴充）
-        const filePath = path.join(__dirname, dt_csvPath);
+        await ConnectMachineAdapter(switchAdapterObj.allDeviceNumbers, deviceNum);
+        await downloadFile(RemotePath, localPath);
 
-        fs.stat(filePath, (err, stats) => {
+        fs.stat(localPath, (err, stats) => {
             if (err) {
+                console.error("找不到CSV：", err);
                 res.writeHead(404);
-                res.end('CSV 檔案不存在');
-            return;
+                res.end("CSV 檔案不存在");
+                return;
             }
-            res.writeHead(200, {
-                'Content-Type': 'text/csv',
-                'Content-Disposition': 'attachment; filename="original.csv"',
-                'Content-Length': stats.size,
+            const readStream = fs.createReadStream(csvPath);
+            
+            readStream.on('open', () => {
+                res.writeHead(200, {
+                    'Content-Type': 'text/csv',
+                    'Content-Disposition': 'attachment; filename="original.csv"'
+                });
+                readStream.pipe(res);
             });
-            const readStream = fs.createReadStream(filePath);
+
+            readStream.on('error', (err) => {
+                console.error("讀取 CSV 檔失敗：", err);
+                if (!res.writableEnded) {
+                    res.writeHead(500);
+                    res.end("讀取檔案失敗");
+                }
+            });
+
+            readStream.on('close', () => {
+                console.log("CSV 傳輸結束");
+            });
+
             readStream.pipe(res);
         });
     } catch (e) {
-        res.writeHead(400);
-        res.end('無效的 JSON 資料');
+        console.error("getCSV 內部錯誤：", e);
+        if (!res.writableEnded) {
+            res.writeHead(500);
+            res.end("伺服器內部錯誤");
+        }
     }
 }
 
 function connectToMain() {
     if (isConnected) return;
-    
     const serverName = 'HHC ACSI';
     let port = setting.listenQnxPort;
     console.log(`Trying to connect to ${serverName} where port=${port} and ip=${ip}`);
@@ -372,7 +392,7 @@ async function ConnectMachineAdapter (deviceNumbersToDisable: string[],deviceNum
     }
     if (setting.isSwithchingNetAdapter) {
         await switchNetAdapter(deviceNum, true);
-        const msDelayToOpenAdapter = 30000;
+        const msDelayToOpenAdapter = 35000;
         console.log(`等待 ${msDelayToOpenAdapter}ms 後開啟網卡 ${deviceNum}，準備上傳 Recipe`); 
         await new Promise(res => setTimeout(res, msDelayToOpenAdapter));
     }
@@ -383,4 +403,31 @@ async function ConnectMachineAdapter (deviceNumbersToDisable: string[],deviceNum
     }
     console.log(`${deviceNum} 已正常連接，準備執行 Csv 下載流程`);
 }
+
+async function getFtpClient() {
+    const client = new Client();
+    client.ftp.verbose = true;// 需要除錯時打開
+    await client.access({
+        host: deviceIP,
+        port: 21,
+        user: "cm700",
+        password: "cm700",
+        secure: false// 若為 FTPS 改成 true / "implicit"
+    });
+    return client;
+}
+
+export async function downloadFile(remoteFile: string, localDir: string) {
+    const client = await getFtpClient();
+    try {
+        // 確保本地目錄存在
+        fs.mkdirSync(localDir, { recursive: true });
+        const localPath = path.join(localDir, path.basename(remoteFile));
+        await client.downloadTo(localPath, remoteFile);
+        console.log(`✓ 已下載 ${remoteFile} → ${localPath}`);
+    } finally {
+        client.close();
+    }
+}
+
 // setTimeout(() => { getOpeningDeviceAdapaterNamesP(['31LD001','31LD002']).then(console.log) }, 1000)

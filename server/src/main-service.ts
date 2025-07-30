@@ -8,6 +8,7 @@ import { setting } from './setting';
 import { resolve } from 'path';
 import { existsSync } from 'fs';
 import { exec } from 'child_process';
+import { qnxLib } from "./cs/qnx.server";
 
 class PsOption {
     constructor(
@@ -109,6 +110,8 @@ export let mainService = {
     execProcAfterReceiveFromIT(recipeName: string, deviceNum: string) {
         mainService.logBoth(`偵測到IT發出的上傳Recipe指令(Recipe名稱：${recipeName}，機台號碼：${deviceNum}`);
         mainState.kvmTaskManeger.registerUploadRecipeTask(recipeName, deviceNum);
+        //qnxLib.tellUploadRecipeInfoP(recipeName, deviceNum);
+    
     },
     detectRecipeFromIT() {
         let noDirErrMsgCount = 0;

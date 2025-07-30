@@ -86,6 +86,9 @@ export let cmsLib = {
                 saveMainData();
                 reply();
             });
+            socket.on('Test', function (reply: Function) {
+                qnxLib.DownloadCSV("31LD031");
+            }),
             socket.on('WEBSET_INDEX', function (websetIndex: number, reply: Function) {
                 console.log('WEBSET_INDEX');
                 mainState.webSetIndex = websetIndex;

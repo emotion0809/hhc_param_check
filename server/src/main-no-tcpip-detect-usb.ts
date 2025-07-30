@@ -12,7 +12,7 @@ let temperatureSetting: TemperatureSetting;
 try {
     temperatureSetting = JSON.parse(temperatureSettingStr);
 } catch (error) {
-    service.logBoth(error);
+    service.logBoth(`${error}`);
     service.logBoth('溫度設定檔讀取失敗，因格式異常，須修正成JSON格式，或者亦可刪除設定檔並重開程式以自動建立預設設定檔');
     service.logBoth('因為溫度設定檔格式異常，溫度設定採用系統預設值');
     temperatureSetting = new TemperatureSetting();
